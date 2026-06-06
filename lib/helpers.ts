@@ -25,9 +25,9 @@ export function parseMoney(value: string | number | undefined) {
   return match ? Number(match[1]) : 0
 }
 
-export function countBy<T extends Record<string, unknown>>(items: T[], key: keyof T) {
+export function countBy<T>(items: T[], key: keyof T) {
   return items.reduce<Record<string, number>>((acc, item) => {
-    const value = (item[key] as string) || "Unknown"
+    const value = (item[key] as unknown as string) || "Unknown"
     acc[value] = (acc[value] || 0) + 1
     return acc
   }, {})
