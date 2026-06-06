@@ -28,6 +28,53 @@
         <section class="panel">
           <div class="panel-header">
             <div>
+              <p class="eyebrow">Graphical View</p>
+              <h2>Progress & Performance Indicators</h2>
+            </div>
+            <p class="panel-note">Visual overview of project health, SBU progress, task execution and revenue indicators.</p>
+          </div>
+          <div class="charts-grid">
+            <article class="chart-card wide">
+              <div class="chart-header">
+                <h3>Project Progress by Priority Project</h3>
+                <span>Progress %</span>
+              </div>
+              <div id="projectProgressChart" class="chart-host"></div>
+            </article>
+            <article class="chart-card">
+              <div class="chart-header">
+                <h3>Project Status Mix</h3>
+                <span>Health</span>
+              </div>
+              <div id="statusPieChart" class="chart-host pie-host"></div>
+            </article>
+            <article class="chart-card">
+              <div class="chart-header">
+                <h3>Task Status Mix</h3>
+                <span>Execution</span>
+              </div>
+              <div id="taskPieChart" class="chart-host pie-host"></div>
+            </article>
+            <article class="chart-card wide">
+              <div class="chart-header">
+                <h3>SBU Average Progress</h3>
+                <span>Portfolio</span>
+              </div>
+              <div id="sbuProgressChart" class="chart-host"></div>
+            </article>
+            <article class="chart-card wide">
+              <div class="chart-header">
+                <h3>Revenue / KPI Indicators</h3>
+                <span>Management view</span>
+              </div>
+              <div id="revenueIndicatorChart" class="chart-host"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
               <p class="eyebrow">Strategic Business Units</p>
               <h2>Portfolio Overview</h2>
             </div>
@@ -127,5 +174,6 @@
     </dialog>
 
     <script src="app.js"></script>
+    <script src="charts.js"></script>
   </body>
 </html>
