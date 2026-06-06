@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Investhood IT Portfolio</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="enhancements.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -16,7 +17,7 @@
         </div>
         <div class="hero-side">
           <div class="hero-actions">
-            <button id="themeToggleBtn" class="btn ghost" type="button">🌙 Dark Mode</button>
+            <button id="themeToggleBtn" class="btn ghost" type="button">Dark Mode</button>
             <button id="resetDataBtn" class="btn secondary">Reset Demo Data</button>
             <button id="exportBtn" class="btn">Export JSON</button>
             <label class="btn ghost" for="importInput">Import JSON</label>
@@ -46,38 +47,38 @@
               <p class="eyebrow">Graphical View</p>
               <h2>Progress & Performance Indicators</h2>
             </div>
-            <p class="panel-note">Visual overview of project health, SBU progress, task execution and revenue indicators.</p>
+            <p class="panel-note">Click any chart block to view the detailed records behind that indicator.</p>
           </div>
           <div class="charts-grid">
-            <article class="chart-card wide">
+            <article class="chart-card wide linked-block" data-detail="project-progress">
               <div class="chart-header">
                 <h3>Project Progress by Priority Project</h3>
                 <span>Progress %</span>
               </div>
               <div id="projectProgressChart" class="chart-host"></div>
             </article>
-            <article class="chart-card">
+            <article class="chart-card linked-block" data-detail="project-status">
               <div class="chart-header">
                 <h3>Project Status Mix</h3>
                 <span>Health</span>
               </div>
               <div id="statusPieChart" class="chart-host pie-host"></div>
             </article>
-            <article class="chart-card">
+            <article class="chart-card linked-block" data-detail="task-status">
               <div class="chart-header">
                 <h3>Task Status Mix</h3>
                 <span>Execution</span>
               </div>
               <div id="taskPieChart" class="chart-host pie-host"></div>
             </article>
-            <article class="chart-card wide">
+            <article class="chart-card wide linked-block" data-detail="sbu-progress">
               <div class="chart-header">
                 <h3>SBU Average Progress</h3>
                 <span>Portfolio</span>
               </div>
               <div id="sbuProgressChart" class="chart-host"></div>
             </article>
-            <article class="chart-card wide">
+            <article class="chart-card wide linked-block" data-detail="revenue-kpis">
               <div class="chart-header">
                 <h3>Revenue / KPI Indicators</h3>
                 <span>Management view</span>
@@ -88,6 +89,21 @@
         </section>
 
         <section class="summary-grid" id="summaryCards"></section>
+
+        <section class="panel notification-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Notifications</p>
+              <h2>Tasks Due Today</h2>
+            </div>
+            <p class="panel-note">Phase 1 supports manual email and WhatsApp message preparation. Automatic scheduled sending needs the Vercel/Supabase backend phase.</p>
+          </div>
+          <div id="dueTodayList" class="notification-list"></div>
+          <div class="notification-actions">
+            <a id="emailDueTasksBtn" class="btn" href="#">Prepare Email Notification</a>
+            <a id="whatsappDueTasksBtn" class="btn secondary" href="#" target="_blank" rel="noopener">Prepare WhatsApp Reminder</a>
+          </div>
+        </section>
 
         <section class="panel">
           <div class="panel-header">
@@ -110,7 +126,7 @@
           <div id="calendarAgenda" class="calendar-agenda"></div>
         </section>
 
-        <section class="panel">
+        <section class="panel linked-block" data-detail="sbus">
           <div class="panel-header">
             <div>
               <p class="eyebrow">Strategic Business Units</p>
@@ -121,7 +137,7 @@
         </section>
 
         <section class="dashboard-layout">
-          <div class="panel">
+          <div class="panel linked-block" data-detail="projects">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Projects</p>
@@ -147,7 +163,7 @@
             </div>
           </div>
 
-          <aside class="panel">
+          <aside class="panel linked-block" data-detail="weekly-review">
             <div class="panel-header compact">
               <div>
                 <p class="eyebrow">CEO View</p>
@@ -158,7 +174,7 @@
           </aside>
         </section>
 
-        <section class="panel">
+        <section class="panel linked-block" data-detail="tasks">
           <div class="panel-header">
             <div>
               <p class="eyebrow">Execution</p>
@@ -170,7 +186,7 @@
         </section>
 
         <section class="dashboard-layout">
-          <div class="panel">
+          <div class="panel linked-block" data-detail="kpis">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Daily Operations</p>
@@ -180,7 +196,7 @@
             <div class="kpi-grid" id="kpiGrid"></div>
           </div>
 
-          <div class="panel">
+          <div class="panel linked-block" data-detail="risks">
             <div class="panel-header compact">
               <div>
                 <p class="eyebrow">Risk Control</p>
@@ -225,10 +241,25 @@
       </form>
     </dialog>
 
+    <dialog id="detailDialog">
+      <div class="detail-dialog-content">
+        <div class="detail-dialog-header">
+          <div>
+            <p class="eyebrow">Drill-down view</p>
+            <h2 id="detailTitle">Details</h2>
+          </div>
+          <button id="closeDetailBtn" class="btn secondary" type="button">Close</button>
+        </div>
+        <div id="detailContent" class="detail-content"></div>
+      </div>
+    </dialog>
+
     <script src="app.js"></script>
     <script src="charts.js"></script>
     <script src="calendar.js"></script>
     <script src="assistant.js"></script>
     <script src="theme.js"></script>
+    <script src="notifications.js"></script>
+    <script src="details.js"></script>
   </body>
 </html>
