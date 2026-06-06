@@ -3,28 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portfolio Command Centre</title>
+    <title>Investhood IT Portfolio</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <header class="hero">
-        <div>
-          <p class="eyebrow">Jerome Dhlamini Portfolio</p>
+        <div class="hero-main">
+          <p class="eyebrow">Investhood IT Portfolio</p>
           <h1>Project & Operations Dashboard</h1>
           <p class="hero-copy">Track SBUs, projects, tasks, risks, revenue targets, sponsors and weekly execution priorities in one place.</p>
         </div>
-        <div class="hero-actions">
-          <button id="resetDataBtn" class="btn secondary">Reset Demo Data</button>
-          <button id="exportBtn" class="btn">Export JSON</button>
-          <label class="btn ghost" for="importInput">Import JSON</label>
-          <input id="importInput" type="file" accept="application/json" hidden />
+        <div class="hero-side">
+          <div class="hero-actions">
+            <button id="themeToggleBtn" class="btn ghost" type="button">🌙 Dark Mode</button>
+            <button id="resetDataBtn" class="btn secondary">Reset Demo Data</button>
+            <button id="exportBtn" class="btn">Export JSON</button>
+            <label class="btn ghost" for="importInput">Import JSON</label>
+            <input id="importInput" type="file" accept="application/json" hidden />
+          </div>
+          <aside class="ai-agent" aria-label="AI portfolio assistant">
+            <div class="ai-agent-header">
+              <span class="ai-avatar">AI</span>
+              <div>
+                <strong>Portfolio AI Agent</strong>
+                <small>Ask about SBUs, projects, risks or tasks</small>
+              </div>
+            </div>
+            <form id="aiForm" class="ai-form">
+              <input id="aiQuestion" type="text" placeholder="Ask: Which projects are at risk?" />
+              <button class="btn" type="submit">Ask</button>
+            </form>
+            <div id="aiResponse" class="ai-response">I can answer using the current dashboard data. For live AI responses, connect this app to Vercel + an AI API in Phase 2.</div>
+          </aside>
         </div>
       </header>
 
       <main>
-        <section class="summary-grid" id="summaryCards"></section>
-
         <section class="panel">
           <div class="panel-header">
             <div>
@@ -70,6 +85,29 @@
               <div id="revenueIndicatorChart" class="chart-host"></div>
             </article>
           </div>
+        </section>
+
+        <section class="summary-grid" id="summaryCards"></section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Calendar</p>
+              <h2>Tasks, Events & South African Holidays</h2>
+            </div>
+            <div class="calendar-actions">
+              <button id="prevMonthBtn" class="btn secondary" type="button">← Previous</button>
+              <button id="todayBtn" class="btn ghost" type="button">Today</button>
+              <button id="nextMonthBtn" class="btn secondary" type="button">Next →</button>
+              <button id="addEventBtn" class="btn" type="button">Add Event</button>
+            </div>
+          </div>
+          <div class="calendar-header-line">
+            <h3 id="calendarTitle">Calendar</h3>
+            <p>Shows dashboard task due dates, editable user events and upcoming South African public holidays.</p>
+          </div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+          <div id="calendarAgenda" class="calendar-agenda"></div>
         </section>
 
         <section class="panel">
@@ -173,7 +211,24 @@
       </form>
     </dialog>
 
+    <dialog id="eventDialog">
+      <form method="dialog" id="eventForm" class="dialog-form">
+        <h2>Add Calendar Event</h2>
+        <label>Event title<input name="title" required /></label>
+        <label>Date<input name="date" type="date" required /></label>
+        <label>Type<select name="type"><option>Meeting</option><option>Marketing</option><option>Funding</option><option>Camp</option><option>Compliance</option><option>Other</option></select></label>
+        <label>Notes<textarea name="notes" rows="3"></textarea></label>
+        <div class="dialog-actions">
+          <button value="cancel" class="btn secondary" type="button" id="cancelEventBtn">Cancel</button>
+          <button value="default" class="btn" type="submit">Save Event</button>
+        </div>
+      </form>
+    </dialog>
+
     <script src="app.js"></script>
     <script src="charts.js"></script>
+    <script src="calendar.js"></script>
+    <script src="assistant.js"></script>
+    <script src="theme.js"></script>
   </body>
 </html>
