@@ -10,12 +10,23 @@ import { integrationStatus } from "./integration-status"
 
 const TABLES = ["sbus", "projects", "tasks", "weekly_review", "kpis", "events"] as const
 
+// Normalize SUPABASE_URL so it works whether the user provides the bare project
+// URL (https://xxxx.supabase.co) or the full REST URL (.../rest/v1[/]).
+// We strip any trailing slash and a trailing "/rest/v1" segment, then re-append
+// "/rest/v1" ourselves to build a valid endpoint.
+function restBase(rawUrl: string): string {
+  return rawUrl
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/rest\/v1$/i, "")
+}
+
 async function fetchTable<T>(table: string): Promise<T[] | null> {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_ANON_KEY
   if (!url || !key) return null
   try {
-    const res = await fetch(`${url}/rest/v1/${table}?select=*`, {
+    const res = await fetch(`${restBase(url)}/rest/v1/${table}?select=*`, {
       headers: {
         apikey: key,
         Authorization: `Bearer ${key}`,
