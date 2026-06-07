@@ -1,44 +1,51 @@
-# Project Ops Dashboard
+# Project & Operations Dashboard
 
-A lightweight web-based Portfolio Command Centre for tracking Investhood IT, SmartRise EdTech, Investhood Skills Hub, Dhlamini Farm, SOS Coding Camps and related project operations.
+A Portfolio Command Centre for Investhood IT — tracking Strategic Business Units
+(SBUs), projects, tasks, KPIs, risks, revenue targets and weekly execution
+priorities in one place.
 
-## What this MVP includes
+Built with **Next.js (App Router)** and designed to deploy to **Vercel** with
+zero required configuration. It runs fully in **Demo Mode** out of the box, and
+progressively enables live data, notifications and AI as you add credentials.
 
-- 4 Strategic Business Units (SBUs)
-- Project status dashboard
-- Task tracker with priority, owners, deadlines and progress
-- KPI cards for day-to-day management
-- Risk and revenue tracking
-- Local browser persistence using `localStorage`
-- Export and import of dashboard data as JSON
-- GitHub Pages-ready static web app
+## Features
 
-## Important note
+- 4 Strategic Business Units with goals and linked projects
+- Project status board (On Track / In Progress / At Risk / Delayed / Completed)
+- Task tracker with owners, due dates, priority and progress
+- KPI cards, risk register and revenue tracking
+- Interactive calendar with events
+- Drill-down detail dialogs across every section
+- Charts (status mix, progress by SBU)
+- Portfolio AI Agent (grounded local analysis, optional model phrasing)
+- Email + WhatsApp task reminders with a daily cron job
+- Role-based sign-in (Admin / Manager / Team Member / Viewer) with guest demo mode
+- Dark mode, JSON export/import
+- Supabase-ready data layer that falls back to demo data automatically
 
-This first version is a static dashboard. It can be hosted on GitHub Pages and shared by link. Edits are saved in each user's browser only. For real-time shared updates across the whole team, the next phase should connect this frontend to Supabase or Firebase.
+## Run locally
 
-## Suggested live URL after GitHub Pages is enabled
+```bash
+npm install
+npm run dev
+```
 
-`https://investhoodit.github.io/project-ops-dashboard/`
+Open http://localhost:3000.
 
-## How to enable GitHub Pages
+## Deploy
 
-1. Open the repository on GitHub.
-2. Go to **Settings**.
-3. Go to **Pages**.
-4. Under **Build and deployment**, select **GitHub Actions** as the source.
-5. Push any change to `main`, or manually run the workflow from the **Actions** tab.
+This repo is connected to Vercel. Pushing to the connected branch deploys
+automatically. No environment variables are required to deploy — everything
+degrades gracefully.
 
-## Phase 2 recommendation
+## Configuration
 
-Add Supabase authentication and database tables for shared team updates:
+All integrations are **optional**. See **[SETUP.md](./SETUP.md)** for the full
+list of environment variables (Supabase, Resend/SendGrid, Twilio WhatsApp,
+OpenAI/AI Gateway, Cron) and how each feature behaves when a key is missing.
 
-- users
-- projects
-- tasks
-- comments
-- risks
-- sponsors
-- revenue_updates
-- weekly_reviews
+## API routes
 
+- `GET|POST /api/notify-due-tasks` — preview or send the due-task digest
+- `GET /api/cron/notify` — cron-triggered digest (protected by `CRON_SECRET`)
+- `POST /api/assistant` — portfolio AI assistant
