@@ -28,7 +28,50 @@ are empty or unreachable, it falls back to the built-in demo data.
 The header badge shows **Live Data (Supabase)** when connected, otherwise
 **Demo Mode**.
 
-## 2. Email reminders (optional) — Resend or SendGrid
+### Create the tables
+
+Run these once in the **Supabase SQL Editor** (paste the file contents, not the path):
+
+1. `scripts/supabase-setup.sql` — core dashboard tables (`sbus`, `projects`,
+   `tasks`, `weekly_review`, `kpis`, `events`) + RLS read policies + seed data.
+2. `scripts/opportunities-setup.sql` — the Opportunities & Leads tables
+   (`opportunities`, `opportunity_search_runs`) + RLS policies + seed data.
+
+## 2. Sign-in (optional) — Supabase Auth (Google)
+
+When the **public** Supabase vars are set, the dashboard requires Google
+sign-in before showing data. Without them, it runs in **Demo Mode** with a
+role picker (no real authentication).
+
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Same value as `SUPABASE_URL` (exposed to the browser) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same value as `SUPABASE_ANON_KEY` (exposed to the browser) |
+| `NEXT_PUBLIC_ADMIN_EMAILS` | *(optional)* comma-separated emails granted the **Admin** role. Everyone else who signs in defaults to **Manager**. |
+
+In the Supabase dashboard, enable **Authentication → Providers → Google** and
+add the redirect URL `https://<your-domain>/auth/callback` (and the local
+`http://localhost:3000/auth/callback` for development).
+
+## 3. Opportunity discovery search (optional)
+
+The Opportunities module can auto-discover tenders, grants and funding calls.
+Set **one** provider key to enable the **Run Search Now** button and the daily
+search cron. Without a key, the module still works for manual entry, editing,
+scoring and tracking.
+
+| Variable | Description |
+| --- | --- |
+| `TAVILY_API_KEY` | Tavily search API key (recommended), OR |
+| `SERPAPI_API_KEY` | SerpAPI key, OR |
+| `BING_SEARCH_API_KEY` | Bing Web Search key |
+| `SEARCH_API_PROVIDER` | *(optional)* force a provider: `tavily` \| `serpapi` \| `bing` |
+
+Discovered opportunities are de-duplicated by source URL, scored
+(relevance / urgency / fit), and high-priority finds trigger the configured
+email + WhatsApp channels.
+
+## 4. Email reminders (optional) — Resend or SendGrid
 
 Provide **one** email provider:
 
@@ -39,7 +82,7 @@ Provide **one** email provider:
 | `NOTIFICATION_EMAIL_TO` | Comma-separated recipient list |
 | `NOTIFICATION_EMAIL_FROM` | Verified sender (default `dashboard@investhoodit.com`) |
 
-## 3. WhatsApp reminders (optional) — Twilio
+## 5. WhatsApp reminders (optional) — Twilio
 
 | Variable | Description |
 | --- | --- |
@@ -48,7 +91,7 @@ Provide **one** email provider:
 | `TWILIO_WHATSAPP_FROM` | WhatsApp-enabled sender, e.g. `whatsapp:+14155238886` |
 | `WHATSAPP_NOTIFICATION_TO` | Recipient, e.g. `whatsapp:+27...` |
 
-## 4. AI assistant (optional)
+## 6. AI assistant (optional)
 
 The Portfolio AI Agent always works using grounded, on-device analysis of your
 data. To have a model phrase the answers, set **one** of:
@@ -59,15 +102,35 @@ data. To have a model phrase the answers, set **one** of:
 | `OPENAI_API_KEY` | OpenAI API key |
 
 Badge shows **AI Mode** when configured, otherwise **Local Mode**.
+The same key, when present, is also used to enrich and score discovered
+opportunities; otherwise a built-in rule-based scorer is used.
 
-## 5. Scheduled reminders (optional) — Cron
+## 7. Scheduled jobs (optional) — Cron
 
-A Vercel Cron job (`vercel.json`) calls `/api/cron/notify` daily at 07:00 UTC,
-which triggers the email + WhatsApp digest of overdue / due tasks.
+Two Vercel Cron jobs are defined in `vercel.json`:
+
+- `/api/cron/notify` — daily at **07:00 UTC**: email + WhatsApp digest of
+  overdue / due tasks.
+- `/api/opportunities/search` — daily at **05:00 UTC**: runs opportunity
+  discovery (requires a search provider key) and notifies on high-priority finds.
 
 | Variable | Description |
 | --- | --- |
-| `CRON_SECRET` | Shared secret. When set, the cron endpoint requires `Authorization: Bearer <CRON_SECRET>`. Vercel Cron sends this automatically. |
+| `CRON_SECRET` | Shared secret. When set, the cron endpoints require `Authorization: Bearer <CRON_SECRET>`. Vercel Cron sends this automatically. |
+
+---
+
+## Brand logos in the header
+
+The header brand strip looks for these files in `public/logos/`:
+
+- `charisma-smartrise.png` — Charisma Smart-Rise Crèche
+- `investhood-skills-hub.png` — Investhood Skills Hub
+- `investhood-it.png` — Investhood IT
+
+Drop your logo images at those paths (transparent PNG/SVG, roughly 26px tall
+works best). If a file is missing, the strip automatically falls back to a
+clean text wordmark, so the header always looks intentional.
 
 ---
 
@@ -76,6 +139,9 @@ which triggers the email + WhatsApp digest of overdue / due tasks.
 - `GET /api/notify-due-tasks` — preview the digest + which channels are configured.
 - `POST /api/notify-due-tasks` — actually send via configured channels.
 - `POST /api/assistant` — `{ "question": "...", "data": { ... } }`.
+- `GET /api/opportunities` — list opportunities + data source + search status.
+- `POST /api/opportunities` — upsert one opportunity (body: the opportunity object).
+- `POST /api/opportunities/search` — run discovery now (requires a search provider key).
 
 ## Database schema (if using Supabase)
 
@@ -94,3 +160,9 @@ create table weekly_review (label text, done boolean);
 create table kpis (label text, value text);
 create table events (id text primary key, title text, date text, type text, notes text);
 ```
+
+For the full, ready-to-run versions (with RLS policies and seed data), use the
+scripts in `scripts/` rather than copying the snippet above:
+
+- `scripts/supabase-setup.sql` — core dashboard tables
+- `scripts/opportunities-setup.sql` — `opportunities` + `opportunity_search_runs`

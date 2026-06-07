@@ -69,3 +69,55 @@ export interface AppUser {
   email: string
   role: UserRole
 }
+
+// ---------------------------------------------------------------------------
+// Opportunities & Leads module
+// ---------------------------------------------------------------------------
+
+export type OpportunityStatus = "New" | "Reviewing" | "Applied" | "Not Relevant" | "Won" | "Lost" | "Archived"
+
+export type OrganisationType = "Private Company" | "NPO" | "School" | "Creche" | "Farm" | "General"
+
+export type OpportunityType =
+  | "Government Tender"
+  | "IT/Software Tender"
+  | "Grant/Funding"
+  | "SETA Opportunity"
+  | "Internship/WBL"
+  | "Incubation/Accelerator"
+  | "CSI/Donor/Sponsorship"
+  | "International Grant"
+  | "Agri/Community"
+  | "Other"
+
+export interface OpportunityScores {
+  relevance: number
+  urgency: number
+  fit: number
+  recommendedAction: string
+}
+
+export interface Opportunity {
+  id: string
+  title: string
+  description: string
+  source_name: string
+  source_url: string
+  opportunity_type: OpportunityType
+  sbu_id: string
+  organisation_type: OrganisationType
+  estimated_value: string
+  location: string
+  closing_date: string
+  eligibility: string
+  contact_email: string
+  contact_phone: string
+  application_url: string
+  status: OpportunityStatus
+  priority: Priority
+  assigned_to: string
+  notes: string
+  scores?: OpportunityScores
+  created_at: string
+  updated_at: string
+}
