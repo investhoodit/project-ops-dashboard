@@ -22,6 +22,14 @@ function daysUntil(dateStr: string): number | null {
   return Math.ceil((d - Date.now()) / 86400000)
 }
 
+// Rank by a blend of relevance, urgency and fit so high-value, time-sensitive
+// opportunities surface first.
+function compositeScore(o: Opportunity): number {
+  const s = o.scores
+  if (!s) return 0
+  return s.relevance * 0.5 + s.urgency * 0.3 + s.fit * 0.2
+}
+
 export function OpportunitiesSection() {
   const { canEdit } = useDashboard()
   const { data, isLoading, mutate } = useSWR<ApiResponse>("/api/opportunities", fetcher, {
@@ -53,7 +61,7 @@ export function OpportunitiesSection() {
           o.opportunity_type.toLowerCase().includes(q)
         )
       })
-      .sort((a, b) => (b.scores?.relevance ?? 0) - (a.scores?.relevance ?? 0))
+      .sort((a, b) => compositeScore(b) - compositeScore(a))
   }, [opportunities, statusFilter, sbuFilter, query])
 
   const stats = useMemo(() => {

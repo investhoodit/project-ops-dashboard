@@ -7,6 +7,17 @@ import type { AppUser, UserRole } from "./types"
 
 type AuthStatus = "loading" | "signed-in" | "signed-out" | "demo"
 
+// Minimal structural type for the bits of a Supabase session we consume. This
+// avoids depending on @supabase/supabase-js types in places where the browser
+// client may be loosely typed.
+type AuthSession = {
+  user: {
+    email?: string
+    user_metadata?: Record<string, unknown>
+    app_metadata?: Record<string, unknown>
+  }
+} | null
+
 interface AuthContextValue {
   authConfigured: boolean
   status: AuthStatus
@@ -58,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let active = true
 
-    function toAppUser(session: { user: { email?: string; user_metadata?: Record<string, unknown>; app_metadata?: Record<string, unknown> } } | null): AppUser | null {
+    function toAppUser(session: AuthSession): AppUser | null {
       if (!session?.user?.email) return null
       const meta = session.user.user_metadata || {}
       const appMeta = session.user.app_metadata || {}
@@ -70,14 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: { data: { session: AuthSession } }) => {
       if (!active) return
       const appUser = toAppUser(data.session)
       applyUser(appUser)
       setStatus(appUser ? "signed-in" : "signed-out")
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event: string, session: AuthSession) => {
       if (!active) return
       const appUser = toAppUser(session)
       applyUser(appUser)
