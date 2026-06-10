@@ -195,6 +195,16 @@ body.dark-mode .chart-label, body.dark-mode .legend-item { color: #cbd5e1; fill:
 .ai-form input { background: white; color: #0f172a; }
 .ai-response { margin-top: 10px; background: rgba(2, 6, 23, .25); border-radius: 14px; padding: 10px; color: #e0f2fe; line-height: 1.5; max-height: 220px; overflow: auto; white-space: pre-wrap; }
 .ai-badge { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.2); color: #e0f2fe; }
+.ai-mode-chip { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 999px; }
+.ai-mode-chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.ai-mode-dashboard { background: rgba(56,189,248,.22); color: #bae6fd; }
+.ai-mode-general { background: rgba(167,243,208,.18); color: #bbf7d0; }
+.ai-mode-web { background: rgba(253,224,71,.2); color: #fde68a; }
+.ai-mode-local { background: rgba(255,255,255,.16); color: #e2e8f0; }
+.ai-sources { margin-top: 10px; display: grid; gap: 6px; }
+.ai-sources strong { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #cbd5e1; }
+.ai-source-link { display: block; font-size: 12px; color: #bae6fd; text-decoration: none; word-break: break-word; padding: 6px 9px; border-radius: 10px; background: rgba(2,6,23,.3); }
+.ai-source-link:hover { text-decoration: underline; background: rgba(2,6,23,.45); }
 
 dialog { width: min(720px, 92vw); border: 0; padding: 0; }
 dialog::backdrop { background: rgba(2, 6, 23, .55); }
