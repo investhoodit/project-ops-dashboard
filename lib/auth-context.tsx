@@ -81,12 +81,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    supabase.auth.getSession().then(({ data }: { data: { session: AuthSession } }) => {
-      if (!active) return
-      const appUser = toAppUser(data.session)
-      applyUser(appUser)
-      setStatus(appUser ? "signed-in" : "signed-out")
-    })
+    // Safety net: if the session lookup hangs (e.g. Supabase unreachable), fall
+    // through to the signed-out screen rather than blocking on "loading" forever.
+    const timeout = setTimeout(() => {
+      if (active) setStatus((s) => (s === "loading" ? "signed-out" : s))
+    }, 6000)
+
+    supabase.auth
+      .getSession()
+      .then(({ data }: { data: { session: AuthSession } }) => {
+        if (!active) return
+        clearTimeout(timeout)
+        const appUser = toAppUser(data.session)
+        applyUser(appUser)
+        setStatus(appUser ? "signed-in" : "signed-out")
+      })
+      .catch(() => {
+        if (!active) return
+        clearTimeout(timeout)
+        setStatus("signed-out")
+      })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event: string, session: AuthSession) => {
       if (!active) return
@@ -97,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false
+      clearTimeout(timeout)
       sub.subscription.unsubscribe()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
