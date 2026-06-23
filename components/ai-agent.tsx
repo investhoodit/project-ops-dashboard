@@ -25,6 +25,7 @@ export function AiAgent() {
   )
   const [mode, setMode] = useState<Mode | null>(null)
   const [sources, setSources] = useState<Source[]>([])
+  const [notice, setNotice] = useState<string>("")
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -37,6 +38,7 @@ export function AiAgent() {
     setAnswer("Thinking...")
     setMode(null)
     setSources([])
+    setNotice("")
     try {
       const res = await fetch("/api/assistant", {
         method: "POST",
@@ -47,6 +49,7 @@ export function AiAgent() {
       setAnswer(json.answer || "No answer returned.")
       setMode((json.mode as Mode) || null)
       setSources(Array.isArray(json.sources) ? json.sources : [])
+      setNotice(typeof json.notice === "string" ? json.notice : "")
     } catch {
       setAnswer("Could not reach the assistant service. Please try again.")
       setMode("local")
@@ -79,6 +82,11 @@ export function AiAgent() {
         </button>
       </form>
       <div className="ai-response">{answer}</div>
+      {notice && !loading && (
+        <p className="ai-notice" role="status">
+          {notice}
+        </p>
+      )}
       {mode && !loading && (
         <span className={`ai-mode-chip ai-mode-${mode}`} aria-label={`Answer source: ${MODE_LABEL[mode]}`}>
           {MODE_LABEL[mode]}

@@ -141,8 +141,23 @@ export async function POST(request: Request) {
     // dashboard
     const answer = await answerDashboard(question, grounded, safeData)
     return NextResponse.json({ answer, mode: "dashboard" as AssistantMode })
-  } catch {
-    // Any failure (missing/invalid key, rate limit, network) → graceful fallback.
-    return NextResponse.json({ answer: grounded, mode: "local" as AssistantMode })
+  } catch (err) {
+    // Any failure (missing/invalid key, rate limit, network) → graceful fallback
+    // to grounded local analysis, but surface WHY so the user can fix setup.
+    const message = err instanceof Error ? err.message : String(err)
+    let notice =
+      "AI mode is temporarily unavailable, so this answer uses on-device analysis of your dashboard data."
+    if (/credit card|billing|payment|unlock your free credits/i.test(message)) {
+      notice =
+        "AI answers are unavailable because the Vercel AI Gateway needs a credit card on file to unlock free credits. " +
+        "Add one under Vercel → AI, or set an OPENAI_API_KEY. Showing on-device analysis for now."
+    } else if (/quota|rate limit|429|insufficient/i.test(message)) {
+      notice =
+        "The AI provider is rate-limited or out of quota right now. Showing on-device analysis instead."
+    } else if (/api key|unauthor|401|invalid|missing/i.test(message)) {
+      notice =
+        "The AI key looks missing or invalid. Check AI_GATEWAY_API_KEY (or OPENAI_API_KEY). Showing on-device analysis for now."
+    }
+    return NextResponse.json({ answer: grounded, mode: "local" as AssistantMode, notice })
   }
 }
