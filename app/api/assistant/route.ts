@@ -23,9 +23,14 @@ const ORG_CONTEXT =
   "You help the team with business, funding, tenders, SETA, NPO, IT, education, agriculture and strategy questions. " +
   "Be concise, practical and accurate. Use South African context (Rands, SETAs, B-BBEE, CSD, eTenders) where relevant."
 
-function modelString() {
-  // Prefer OpenAI directly when its key is present; otherwise use the gateway.
-  return OPENAI_KEY ? "gpt-5.5" : "openai/gpt-5.5"
+// A reusable OpenAI provider bound to the explicit key (when present).
+const openaiProvider = OPENAI_KEY ? createOpenAI({ apiKey: OPENAI_KEY }) : null
+
+// Resolve the chat model. When an OpenAI key is set we hit OpenAI directly
+// (avoids the AI Gateway billing requirement); otherwise a bare gateway string
+// is used, which routes through the Vercel AI Gateway.
+function chatModel() {
+  return openaiProvider ? openaiProvider("gpt-5.5") : ("openai/gpt-5.5" as never)
 }
 
 // Build an organisation-knowledge block from the knowledge base, if any entries
@@ -47,7 +52,7 @@ async function knowledgeContext(question: string): Promise<string> {
 async function answerGeneral(question: string): Promise<string> {
   const kb = await knowledgeContext(question)
   const { text } = await generateText({
-    model: modelString() as never,
+    model: chatModel(),
     system:
       ORG_CONTEXT +
       " This question is general knowledge or strategy — answer from your own expertise" +
@@ -61,7 +66,7 @@ async function answerGeneral(question: string): Promise<string> {
 // Answer using the OpenAI Responses API with the built-in web_search tool, and
 // return clickable citations.
 async function answerWithWeb(question: string): Promise<{ answer: string; sources: AssistantSource[] }> {
-  const openai = createOpenAI({ apiKey: OPENAI_KEY })
+  const openai = openaiProvider ?? createOpenAI({ apiKey: OPENAI_KEY })
   const priority = OFFICIAL_SOURCE_DOMAINS.join(", ")
   const { text, sources } = await generateText({
     model: openai.responses("gpt-5.5"),
@@ -87,7 +92,7 @@ async function answerWithWeb(question: string): Promise<{ answer: string; source
 // Phrase a dashboard answer with the model, grounded strictly in computed facts.
 async function answerDashboard(question: string, grounded: string, data: DashboardData): Promise<string> {
   const { text } = await generateText({
-    model: modelString() as never,
+    model: chatModel(),
     system:
       ORG_CONTEXT +
       " Answer ONLY using the provided dashboard facts. Do not invent numbers. " +
