@@ -401,6 +401,29 @@ dialog::backdrop { background: rgba(2, 6, 23, .55); }
 .status-lost, .status-not-relevant { background: rgba(100, 116, 139, .15); color: var(--muted); }
 .status-archived { background: rgba(100, 116, 139, .12); color: var(--muted); }
 
+.opp-link-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.opp-link-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap;
+}
+.link-verified { background: rgba(5, 150, 105, .15); color: var(--green); }
+.link-needs_review { background: rgba(249, 115, 22, .15); color: var(--orange); }
+.link-broken { background: rgba(220, 38, 38, .15); color: #dc2626; }
+.link-unchecked { background: rgba(100, 116, 139, .15); color: var(--muted); }
+.opp-official { color: #d97706; font-weight: 900; }
+.opp-quality {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 2px 7px; border-radius: 8px; font-size: 11px; font-weight: 800;
+}
+.quality-high { background: rgba(5, 150, 105, .12); color: var(--green); }
+.quality-mid { background: rgba(249, 115, 22, .12); color: var(--orange); }
+.quality-low { background: rgba(220, 38, 38, .12); color: #dc2626; }
+.opp-link-status-line {
+  margin: 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  font-size: 12px; color: var(--muted);
+}
+.opp-link-checked, .opp-link-quality { font-weight: 600; }
+
 .opp-actions-cell button {
   border: 1px solid var(--line); background: var(--soft); border-radius: 10px;
   padding: 6px 12px; cursor: pointer; font-family: inherit; font-weight: 700; color: var(--text); font-size: 13px;

@@ -26,6 +26,7 @@ async function handle(triggeredBy: string) {
     status: "success",
     found: result.found,
     inserted,
+    notes: result.rejected > 0 ? `${result.rejected} rejected (broken links)` : "",
   })
 
   // Notify on high-priority finds (best-effort; no-op if channels unconfigured).
@@ -39,6 +40,7 @@ async function handle(triggeredBy: string) {
     ok: true,
     configured: true,
     found: result.found,
+    rejected: result.rejected,
     inserted,
     usedAi: result.usedAi,
     highPriority: highPriority.length,

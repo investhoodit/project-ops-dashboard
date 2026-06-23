@@ -4,6 +4,7 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { analyzeQuestion } from "@/lib/assistant-analysis"
 import { classifyQuestion, type AssistantMode, type AssistantSource } from "@/lib/assistant-router"
 import { OFFICIAL_SOURCE_DOMAINS } from "@/lib/official-sources"
+import { searchKnowledgeBase } from "@/lib/knowledge-base-data"
 import type { DashboardData } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
@@ -27,15 +28,32 @@ function modelString() {
   return OPENAI_KEY ? "gpt-5.5" : "openai/gpt-5.5"
 }
 
-// Answer a general-knowledge / strategy question with the model only.
+// Build an organisation-knowledge block from the knowledge base, if any entries
+// match. Used to ground general/strategy answers in Investhood-specific facts.
+async function knowledgeContext(question: string): Promise<string> {
+  try {
+    const entries = await searchKnowledgeBase(question, 4)
+    if (entries.length === 0) return ""
+    const block = entries
+      .map((e) => `- [${e.category}] ${e.title}: ${e.content}`)
+      .join("\n")
+    return `\n\nOrganisation knowledge base (use where relevant, prefer over assumptions):\n${block}`
+  } catch {
+    return ""
+  }
+}
+
+// Answer a general-knowledge / strategy question, grounded with KB context.
 async function answerGeneral(question: string): Promise<string> {
+  const kb = await knowledgeContext(question)
   const { text } = await generateText({
     model: modelString() as never,
     system:
       ORG_CONTEXT +
-      " This question is general knowledge — answer from your own expertise. " +
-      "If something depends on current dates, deadlines or live figures, say it should be verified against the official source.",
-    prompt: question,
+      " This question is general knowledge or strategy — answer from your own expertise" +
+      (kb ? " and the organisation knowledge base provided." : ".") +
+      " If something depends on current dates, deadlines or live figures, say it should be verified against the official source.",
+    prompt: question + kb,
   })
   return text
 }
