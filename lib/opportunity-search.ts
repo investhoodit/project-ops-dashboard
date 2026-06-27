@@ -1,11 +1,14 @@
 import "server-only"
-import { generateObject } from "ai"
+import { generateText, Output } from "ai"
 import { z } from "zod"
 import type { Opportunity, OpportunityType, OrganisationType } from "./types"
 import { OPPORTUNITY_SOURCES } from "./opportunity-sources"
 import { webSearch, type SearchResult } from "./search-provider"
 import { ruleBasedScore, priorityFromScores } from "./opportunity-scoring"
 import { integrationStatus } from "./integration-status"
+import { checkOpportunityLink } from "./link-validator"
+import { isOfficialSource } from "./official-sources"
+import { dataQualityScore, needsReview, inferFields } from "./data-quality"
 
 const AI_AVAILABLE = Boolean(process.env.OPENAI_API_KEY)
 
@@ -57,6 +60,11 @@ function resultToOpportunity(r: SearchResult, category: OpportunityType, sourceN
     priority: "Medium",
     assigned_to: "",
     notes: "Auto-discovered via opportunity search.",
+    link_status: "unchecked",
+    link_checked_at: "",
+    link_http_status: null,
+    is_official_source: isOfficialSource(r.url),
+    data_quality_score: 0,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
@@ -85,9 +93,9 @@ const aiEnrichmentSchema = z.object({
 async function aiEnrich(opps: Opportunity[]): Promise<Opportunity[]> {
   if (!AI_AVAILABLE || opps.length === 0) return opps
   try {
-    const { object } = await generateObject({
+    const { experimental_output: object } = await generateText({
       model: "openai/gpt-5-mini",
-      schema: aiEnrichmentSchema,
+      experimental_output: Output.object({ schema: aiEnrichmentSchema }),
       prompt:
         "You are an opportunity analyst for Investhood IT (private tech company) and its NPO, school, creche and farm ventures across " +
         "Education, Technology/Software, Youth Skills/NPO, and Agro-Tech/Community. " +
@@ -124,14 +132,48 @@ async function aiEnrich(opps: Opportunity[]): Promise<Opportunity[]> {
 export interface DiscoveryResult {
   configured: boolean
   found: number
+  rejected: number
   opportunities: Opportunity[]
   usedAi: boolean
+}
+
+// Validate links and compute data quality. Drops opportunities whose links are
+// broken; flags low-quality or access-restricted ones as "Needs Review".
+async function validateAndScore(opps: Opportunity[]): Promise<{ kept: Opportunity[]; rejected: number }> {
+  const kept: Opportunity[] = []
+  let rejected = 0
+  // Validate with limited concurrency to avoid hammering hosts.
+  const BATCH = 5
+  for (let i = 0; i < opps.length; i += BATCH) {
+    const batch = opps.slice(i, i + BATCH)
+    const checks = await Promise.all(batch.map((o) => checkOpportunityLink(o)))
+    batch.forEach((o, idx) => {
+      const check = checks[idx]
+      if (check.status === "broken") {
+        rejected += 1
+        return // reject broken links entirely
+      }
+      const enriched = inferFields(o)
+      const quality = dataQualityScore(enriched)
+      enriched.link_status = check.status
+      enriched.link_checked_at = check.checkedAt
+      enriched.link_http_status = check.httpStatus
+      enriched.is_official_source = check.isOfficial
+      enriched.data_quality_score = quality
+      // Route incomplete or access-restricted records to human review.
+      if (check.status === "needs_review" || needsReview(enriched)) {
+        enriched.status = "Reviewing"
+      }
+      kept.push(enriched)
+    })
+  }
+  return { kept, rejected }
 }
 
 // Run the full discovery across curated sources. Returns scored opportunities.
 export async function runOpportunitySearch(maxSources = 8, perSource = 3): Promise<DiscoveryResult> {
   if (!integrationStatus.search) {
-    return { configured: false, found: 0, opportunities: [], usedAi: false }
+    return { configured: false, found: 0, rejected: 0, opportunities: [], usedAi: false }
   }
 
   const sources = OPPORTUNITY_SOURCES.slice(0, maxSources)
@@ -148,12 +190,15 @@ export async function runOpportunitySearch(maxSources = 8, perSource = 3): Promi
   }
 
   const enriched = await aiEnrich(collected)
+  // Validate links (dropping broken ones) and compute data-quality scores.
+  const { kept, rejected } = await validateAndScore(enriched)
+
   // Highest combined score first.
-  enriched.sort((a, b) => {
+  kept.sort((a, b) => {
     const sa = (a.scores?.relevance ?? 0) + (a.scores?.urgency ?? 0) + (a.scores?.fit ?? 0)
     const sb = (b.scores?.relevance ?? 0) + (b.scores?.urgency ?? 0) + (b.scores?.fit ?? 0)
     return sb - sa
   })
 
-  return { configured: true, found: enriched.length, opportunities: enriched, usedAi: AI_AVAILABLE }
+  return { configured: true, found: kept.length, rejected, opportunities: kept, usedAi: AI_AVAILABLE }
 }

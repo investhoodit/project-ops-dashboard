@@ -1,9 +1,16 @@
 import type { Opportunity } from "./types"
 import { ruleBasedScore } from "./opportunity-scoring"
+import { dataQualityScore } from "./data-quality"
+import { isOfficialSource } from "./official-sources"
 
 // Demo opportunities shown when Supabase is not configured or the table is empty.
 // These illustrate the kinds of opportunities the module tracks across SBUs.
-const RAW: Omit<Opportunity, "scores">[] = [
+type RawOpportunity = Omit<
+  Opportunity,
+  "scores" | "link_status" | "link_checked_at" | "link_http_status" | "is_official_source" | "data_quality_score"
+>
+
+const RAW: RawOpportunity[] = [
   {
     id: "opp-demo-1",
     title: "MICT SETA Discretionary Grant — Learnerships 2026/27",
@@ -136,4 +143,13 @@ function futureDate(days: number) {
   return d.toISOString().slice(0, 10)
 }
 
-export const demoOpportunities: Opportunity[] = RAW.map((o) => ({ ...o, scores: ruleBasedScore(o) }))
+export const demoOpportunities: Opportunity[] = RAW.map((o) => ({
+  ...o,
+  scores: ruleBasedScore(o),
+  // Demo records use real official domains, so treat links as verified.
+  link_status: "verified" as const,
+  link_checked_at: nowIso(),
+  link_http_status: 200,
+  is_official_source: isOfficialSource(o.application_url || o.source_url),
+  data_quality_score: dataQualityScore(o),
+}))

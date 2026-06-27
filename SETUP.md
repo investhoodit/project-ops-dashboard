@@ -36,6 +36,13 @@ Run these once in the **Supabase SQL Editor** (paste the file contents, not the 
    `tasks`, `weekly_review`, `kpis`, `events`) + RLS read policies + seed data.
 2. `scripts/opportunities-setup.sql` — the Opportunities & Leads tables
    (`opportunities`, `opportunity_search_runs`) + RLS policies + seed data.
+   This script is **idempotent** and now also adds the link-validation and
+   data-quality columns (`link_status`, `link_checked_at`, `link_http_status`,
+   `is_official_source`, `data_quality_score`) — safe to re-run on an existing
+   install to upgrade it.
+3. `scripts/knowledge-base-setup.sql` — the `knowledge_base` table the AI
+   assistant uses to ground organisation-specific answers + RLS policies + seed
+   entries. Optional, but recommended for richer assistant responses.
 
 ## 2. Sign-in (optional) — Supabase Auth (Google)
 
@@ -94,12 +101,28 @@ Provide **one** email provider:
 ## 6. AI assistant (optional)
 
 The Portfolio AI Agent always works using grounded, on-device analysis of your
-data. To have a model phrase the answers, set **one** of:
+data. When a key is configured, each question is **routed** to the best mode and
+the answer is tagged in the UI:
+
+- **Dashboard** — questions about your own projects, tasks, KPIs and
+  opportunities. Answered from your live dashboard data.
+- **General** — strategy / how-to / general-knowledge questions. Answered from
+  the model, grounded with any matching `knowledge_base` entries.
+- **Web** — questions needing current, external facts (deadlines, current
+  programmes, "latest…"). Answered using OpenAI web search, with clickable
+  **source citations** shown beneath the reply.
+
+To enable model-backed answers, set **one** of:
 
 | Variable | Description |
 | --- | --- |
 | `AI_GATEWAY_API_KEY` | Vercel AI Gateway key (recommended), OR |
 | `OPENAI_API_KEY` | OpenAI API key |
+
+> **Web search note:** the live web-search mode uses the OpenAI Responses API.
+> It works with `OPENAI_API_KEY`, or with `AI_GATEWAY_API_KEY` when the gateway
+> routes to an OpenAI model. Without web access the assistant automatically
+> falls back to General mode and says results should be verified.
 
 Badge shows **AI Mode** when configured, otherwise **Local Mode**.
 The same key, when present, is also used to enrich and score discovered
@@ -107,12 +130,15 @@ opportunities; otherwise a built-in rule-based scorer is used.
 
 ## 7. Scheduled jobs (optional) — Cron
 
-Two Vercel Cron jobs are defined in `vercel.json`:
+Three Vercel Cron jobs are defined in `vercel.json`:
 
 - `/api/cron/notify` — daily at **07:00 UTC**: email + WhatsApp digest of
   overdue / due tasks.
 - `/api/opportunities/search` — daily at **05:00 UTC**: runs opportunity
   discovery (requires a search provider key) and notifies on high-priority finds.
+- `/api/opportunities/recheck` — daily at **05:00 UTC**: re-validates every
+  opportunity's source/application link. Broken links flip the record to
+  **Needs Review** (they are never silently deleted once saved).
 
 | Variable | Description |
 | --- | --- |
@@ -134,14 +160,34 @@ clean text wordmark, so the header always looks intentional.
 
 ---
 
+## Link validation & data quality
+
+Every opportunity carries a **link status** and a **data-quality score**:
+
+- **Link status** — `verified` (reachable), `needs_review` (reachable but
+  access-restricted, e.g. login walls), `broken` (unreachable), or `unchecked`.
+  Auto-discovered results with broken links are **rejected before saving**;
+  links are also re-validated on manual save and by the daily re-check cron.
+  Official government / SETA / foundation domains are flagged with a ★.
+- **Data quality (0–100)** — completeness of key fields (deadline, value,
+  contact, eligibility, application URL). Records below the threshold are
+  routed to **Needs Review** automatically.
+
+In the table you can **Re-check link** on demand or **Report broken** (a human
+override that is never auto-reverted). Use the **link-status filter** to show
+only verified, needs-review, broken, or official-source opportunities.
+
 ## Manual testing
 
 - `GET /api/notify-due-tasks` — preview the digest + which channels are configured.
 - `POST /api/notify-due-tasks` — actually send via configured channels.
-- `POST /api/assistant` — `{ "question": "...", "data": { ... } }`.
+- `POST /api/assistant` — `{ "question": "...", "data": { ... } }`. Response
+  includes `mode` (`dashboard` \| `general` \| `web` \| `local`) and `sources`.
 - `GET /api/opportunities` — list opportunities + data source + search status.
 - `POST /api/opportunities` — upsert one opportunity (body: the opportunity object).
 - `POST /api/opportunities/search` — run discovery now (requires a search provider key).
+- `POST /api/opportunities/recheck` — re-validate links now. Body `{ "id": "..." }`
+  to check one, or empty to re-check all.
 
 ## Database schema (if using Supabase)
 

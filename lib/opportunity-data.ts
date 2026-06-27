@@ -43,6 +43,11 @@ interface OppRow {
   urgency_score: number | null
   fit_score: number | null
   recommended_action: string | null
+  link_status: string | null
+  link_checked_at: string | null
+  link_http_status: number | null
+  is_official_source: boolean | null
+  data_quality_score: number | null
   created_at: string
   updated_at: string
 }
@@ -77,6 +82,11 @@ function rowToOpportunity(r: OppRow): Opportunity {
             recommendedAction: r.recommended_action ?? "",
           }
         : ruleBasedScore(r as unknown as Partial<Opportunity>),
+    link_status: (r.link_status as Opportunity["link_status"]) ?? "unchecked",
+    link_checked_at: r.link_checked_at ?? "",
+    link_http_status: r.link_http_status ?? null,
+    is_official_source: r.is_official_source ?? false,
+    data_quality_score: r.data_quality_score ?? 0,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -107,6 +117,11 @@ function opportunityToRow(o: Opportunity): Record<string, unknown> {
     urgency_score: o.scores?.urgency ?? null,
     fit_score: o.scores?.fit ?? null,
     recommended_action: o.scores?.recommendedAction ?? null,
+    link_status: o.link_status ?? "unchecked",
+    link_checked_at: o.link_checked_at || null,
+    link_http_status: o.link_http_status ?? null,
+    is_official_source: o.is_official_source ?? false,
+    data_quality_score: o.data_quality_score ?? 0,
     updated_at: new Date().toISOString(),
   }
 }

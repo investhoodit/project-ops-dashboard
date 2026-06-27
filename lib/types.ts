@@ -97,6 +97,9 @@ export interface OpportunityScores {
   recommendedAction: string
 }
 
+// Result of validating an opportunity's source/application link.
+export type LinkStatus = "verified" | "broken" | "needs_review" | "unchecked"
+
 export interface Opportunity {
   id: string
   title: string
@@ -118,6 +121,13 @@ export interface Opportunity {
   assigned_to: string
   notes: string
   scores?: OpportunityScores
+  // Link validation
+  link_status: LinkStatus
+  link_checked_at: string
+  link_http_status: number | null
+  is_official_source: boolean
+  // Data quality (0-100). Low scores auto-route to "Needs Review".
+  data_quality_score: number
   created_at: string
   updated_at: string
 }

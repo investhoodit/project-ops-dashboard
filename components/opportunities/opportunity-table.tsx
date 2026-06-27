@@ -22,6 +22,41 @@ function ScoreChip({ label, value }: { label: string; value: number }) {
   )
 }
 
+const LINK_LABELS: Record<string, string> = {
+  verified: "Verified",
+  broken: "Broken link",
+  needs_review: "Needs review",
+  unchecked: "Unchecked",
+}
+
+function LinkBadge({ opp }: { opp: Opportunity }) {
+  const status = opp.link_status ?? "unchecked"
+  const label = LINK_LABELS[status] ?? "Unchecked"
+  const title =
+    status === "verified"
+      ? `Link verified${opp.link_http_status ? ` (HTTP ${opp.link_http_status})` : ""}`
+      : status === "broken"
+        ? "Link appears broken or unreachable"
+        : status === "needs_review"
+          ? "Link reachable but restricted — verify manually"
+          : "Link not yet checked"
+  return (
+    <span className={`opp-link-badge link-${status}`} title={title}>
+      {opp.is_official_source && <span className="opp-official" title="Official source" aria-label="Official source">★</span>}
+      {label}
+    </span>
+  )
+}
+
+function QualityBadge({ value }: { value: number }) {
+  const tone = value >= 75 ? "high" : value >= 55 ? "mid" : "low"
+  return (
+    <span className={`opp-quality quality-${tone}`} title={`Data quality: ${value}/100`}>
+      {value}%
+    </span>
+  )
+}
+
 function newId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID()
   return `task-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -38,6 +73,38 @@ export function OpportunityTable({ opportunities, onEdit, onChanged, canEdit }: 
   const { data, saveTask } = useDashboard()
   const [expanded, setExpanded] = useState<string | null>(null)
   const [converted, setConverted] = useState<Record<string, boolean>>({})
+  const [checking, setChecking] = useState<Record<string, boolean>>({})
+
+  // Re-validate a single opportunity's link on demand.
+  async function recheckLink(opp: Opportunity) {
+    setChecking((prev) => ({ ...prev, [opp.id]: true }))
+    try {
+      await fetch("/api/opportunities/recheck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: opp.id }),
+      })
+      onChanged()
+    } finally {
+      setChecking((prev) => ({ ...prev, [opp.id]: false }))
+    }
+  }
+
+  // Report a link as broken: mark it and route the opportunity to review.
+  async function reportBroken(opp: Opportunity) {
+    await fetch("/api/opportunities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...opp,
+        link_status: "broken",
+        link_checked_at: new Date().toISOString(),
+        status: opp.status === "New" ? "Reviewing" : opp.status,
+        notes: `${opp.notes ? opp.notes + "\n" : ""}[Reported broken link by user on ${new Date().toLocaleDateString()}]`,
+      }),
+    })
+    onChanged()
+  }
 
   function convertToTask(opp: Opportunity) {
     const project = data.projects[0]
@@ -74,6 +141,7 @@ export function OpportunityTable({ opportunities, onEdit, onChanged, canEdit }: 
             <th>Type</th>
             <th>Closing</th>
             <th>Scores</th>
+            <th>Link</th>
             <th>Status</th>
             <th aria-label="Actions" />
           </tr>
@@ -119,6 +187,12 @@ export function OpportunityTable({ opportunities, onEdit, onChanged, canEdit }: 
                     )}
                   </td>
                   <td>
+                    <div className="opp-link-cell">
+                      <LinkBadge opp={opp} />
+                      <QualityBadge value={opp.data_quality_score ?? 0} />
+                    </div>
+                  </td>
+                  <td>
                     <span className={`opp-status status-${opp.status.toLowerCase().replaceAll(" ", "-")}`}>
                       {opp.status}
                     </span>
@@ -131,7 +205,7 @@ export function OpportunityTable({ opportunities, onEdit, onChanged, canEdit }: 
                 </tr>
                 {isOpen && (
                   <tr className="opp-detail-row">
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <div className="opp-detail">
                         <div className="opp-detail-grid">
                           <p>{opp.description || "No description provided."}</p>
@@ -175,6 +249,15 @@ export function OpportunityTable({ opportunities, onEdit, onChanged, canEdit }: 
                             <strong>Recommended action:</strong> {opp.scores.recommendedAction}
                           </p>
                         )}
+                        <p className="opp-link-status-line">
+                          <LinkBadge opp={opp} />
+                          {opp.link_checked_at && (
+                            <span className="opp-link-checked">
+                              Checked {new Date(opp.link_checked_at).toLocaleString()}
+                            </span>
+                          )}
+                          <span className="opp-link-quality">Data quality: {opp.data_quality_score ?? 0}%</span>
+                        </p>
                         <div className="opp-detail-actions">
                           {(opp.application_url || opp.source_url) && (
                             <a
@@ -185,6 +268,24 @@ export function OpportunityTable({ opportunities, onEdit, onChanged, canEdit }: 
                             >
                               Open source
                             </a>
+                          )}
+                          <button
+                            type="button"
+                            className="btn secondary"
+                            onClick={() => recheckLink(opp)}
+                            disabled={checking[opp.id]}
+                          >
+                            {checking[opp.id] ? "Checking…" : "Re-check link"}
+                          </button>
+                          {opp.link_status !== "broken" && (
+                            <button
+                              type="button"
+                              className="btn ghost"
+                              onClick={() => reportBroken(opp)}
+                              disabled={!canEdit}
+                            >
+                              Report broken
+                            </button>
                           )}
                           <button type="button" className="btn secondary" onClick={() => onEdit(opp)} disabled={!canEdit}>
                             Edit

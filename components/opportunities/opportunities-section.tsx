@@ -38,6 +38,7 @@ export function OpportunitiesSection() {
 
   const [statusFilter, setStatusFilter] = useState<OpportunityStatus | "All">("All")
   const [sbuFilter, setSbuFilter] = useState<string>("All")
+  const [linkFilter, setLinkFilter] = useState<"All" | "verified" | "broken" | "needs_review" | "official">("All")
   const [query, setQuery] = useState("")
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Opportunity | null>(null)
@@ -52,6 +53,11 @@ export function OpportunitiesSection() {
       .filter((o) => (statusFilter === "All" ? true : o.status === statusFilter))
       .filter((o) => (sbuFilter === "All" ? true : o.sbu_id === sbuFilter))
       .filter((o) => {
+        if (linkFilter === "All") return true
+        if (linkFilter === "official") return o.is_official_source
+        return o.link_status === linkFilter
+      })
+      .filter((o) => {
         if (!query.trim()) return true
         const q = query.toLowerCase()
         return (
@@ -62,7 +68,7 @@ export function OpportunitiesSection() {
         )
       })
       .sort((a, b) => compositeScore(b) - compositeScore(a))
-  }, [opportunities, statusFilter, sbuFilter, query])
+  }, [opportunities, statusFilter, sbuFilter, linkFilter, query])
 
   const stats = useMemo(() => {
     const open = opportunities.filter((o) => !["Won", "Lost", "Archived", "Not Relevant"].includes(o.status))
@@ -72,7 +78,10 @@ export function OpportunitiesSection() {
       return d != null && d >= 0 && d <= 7
     }).length
     const applied = opportunities.filter((o) => o.status === "Applied").length
-    return { total: opportunities.length, open: open.length, high, closingSoon, applied }
+    const linkIssues = opportunities.filter(
+      (o) => o.link_status === "broken" || o.link_status === "needs_review",
+    ).length
+    return { total: opportunities.length, open: open.length, high, closingSoon, applied, linkIssues }
   }, [opportunities])
 
   function openNew() {
@@ -93,7 +102,8 @@ export function OpportunitiesSection() {
       if (!json.configured) {
         setSearchMsg(json.message || "Search is not configured.")
       } else {
-        setSearchMsg(`Found ${json.found} opportunities, added ${json.inserted} new.`)
+        const rejectedNote = json.rejected > 0 ? ` ${json.rejected} rejected for broken links.` : ""
+        setSearchMsg(`Found ${json.found} valid opportunities, added ${json.inserted} new.${rejectedNote}`)
         await mutate()
       }
     } catch {
@@ -162,6 +172,10 @@ export function OpportunitiesSection() {
           <small>Applied</small>
           <strong>{stats.applied}</strong>
         </article>
+        <article className="opp-stat accent-warn">
+          <small>Link Issues</small>
+          <strong>{stats.linkIssues}</strong>
+        </article>
       </div>
 
       <div className="opp-filters">
@@ -187,6 +201,17 @@ export function OpportunitiesSection() {
           <option value="npo">Youth Skills &amp; NPO</option>
           <option value="agro">Agro-Tech, Camps &amp; Community</option>
           <option value="general">General / Cross-cutting</option>
+        </select>
+        <select
+          value={linkFilter}
+          onChange={(e) => setLinkFilter(e.target.value as typeof linkFilter)}
+          aria-label="Filter by link status"
+        >
+          <option value="All">All links</option>
+          <option value="verified">Verified links</option>
+          <option value="needs_review">Needs review</option>
+          <option value="broken">Broken links</option>
+          <option value="official">Official sources only</option>
         </select>
       </div>
 

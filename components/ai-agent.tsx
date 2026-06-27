@@ -3,23 +3,42 @@
 import { useState } from "react"
 import { useDashboard } from "@/lib/dashboard-context"
 
+type Mode = "dashboard" | "general" | "web" | "local"
+
+interface Source {
+  title: string
+  url: string
+}
+
+const MODE_LABEL: Record<Mode, string> = {
+  dashboard: "Dashboard Context",
+  general: "AI General Knowledge",
+  web: "Web Search Used",
+  local: "Local Fallback",
+}
+
 export function AiAgent() {
   const { data, integrations } = useDashboard()
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState(
-    "I can answer using the current dashboard data. Ask about SBUs, projects, risks, tasks, KPIs or revenue.",
+    "Ask about your dashboard (SBUs, projects, risks, tasks, KPIs, revenue) or a general business, funding, tender, SETA or strategy question.",
   )
-  const [mode, setMode] = useState<"ai" | "local" | null>(null)
+  const [mode, setMode] = useState<Mode | null>(null)
+  const [sources, setSources] = useState<Source[]>([])
+  const [notice, setNotice] = useState<string>("")
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!question.trim()) {
-      setAnswer("Please type a question about an SBU, project, task, risk, KPI or revenue item.")
+      setAnswer("Please type a question.")
       return
     }
     setLoading(true)
     setAnswer("Thinking...")
+    setMode(null)
+    setSources([])
+    setNotice("")
     try {
       const res = await fetch("/api/assistant", {
         method: "POST",
@@ -28,9 +47,12 @@ export function AiAgent() {
       })
       const json = await res.json()
       setAnswer(json.answer || "No answer returned.")
-      setMode(json.mode || null)
+      setMode((json.mode as Mode) || null)
+      setSources(Array.isArray(json.sources) ? json.sources : [])
+      setNotice(typeof json.notice === "string" ? json.notice : "")
     } catch {
       setAnswer("Could not reach the assistant service. Please try again.")
+      setMode("local")
     } finally {
       setLoading(false)
     }
@@ -42,7 +64,7 @@ export function AiAgent() {
         <span className="ai-avatar">AI</span>
         <div>
           <strong>Portfolio AI Agent</strong>
-          <small>Ask about SBUs, projects, risks or tasks</small>
+          <small>Dashboard data, business strategy, funding &amp; live web search</small>
         </div>
         <span className="ai-badge" style={{ marginLeft: "auto" }}>
           {integrations.openai ? "AI Mode" : "Local Mode"}
@@ -53,16 +75,33 @@ export function AiAgent() {
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask: Which projects are at risk?"
+          placeholder="Ask: Which projects are at risk? Or: Latest MICT SETA grants?"
         />
         <button className="btn" type="submit" disabled={loading}>
           {loading ? "..." : "Ask"}
         </button>
       </form>
-      <div className="ai-response">
-        {answer}
-        {mode === "local" && integrations.openai === false ? "" : ""}
-      </div>
+      <div className="ai-response">{answer}</div>
+      {notice && !loading && (
+        <p className="ai-notice" role="status">
+          {notice}
+        </p>
+      )}
+      {mode && !loading && (
+        <span className={`ai-mode-chip ai-mode-${mode}`} aria-label={`Answer source: ${MODE_LABEL[mode]}`}>
+          {MODE_LABEL[mode]}
+        </span>
+      )}
+      {sources.length > 0 && !loading && (
+        <div className="ai-sources">
+          <strong>Sources</strong>
+          {sources.map((s) => (
+            <a key={s.url} className="ai-source-link" href={s.url} target="_blank" rel="noopener noreferrer">
+              {s.title}
+            </a>
+          ))}
+        </div>
+      )}
     </aside>
   )
 }
