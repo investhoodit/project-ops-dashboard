@@ -189,6 +189,33 @@ only verified, needs-review, broken, or official-source opportunities.
 - `POST /api/opportunities/recheck` — re-validate links now. Body `{ "id": "..." }`
   to check one, or empty to re-check all.
 
+## Voice prompt (Phase 1)
+
+The dashboard includes a browser-native voice assistant — no OpenAI audio
+billing is required. Speech-to-text uses the Web Speech API
+(`SpeechRecognition` / `webkitSpeechRecognition`) and text-to-speech uses the
+browser `speechSynthesis`. The AI answer still comes from `/api/assistant`, so
+the existing provider chips (OpenAI Direct / Vercel AI Gateway / Local Fallback)
+and the Local Fallback all keep working.
+
+Audio is processed entirely in the browser. Recordings are never stored — only
+the transcript is sent to the assistant when you press **Send to Assistant**.
+
+Test steps:
+
+1. Open the app on mobile (or Chrome/Edge desktop, which support speech input).
+2. Tap the floating **Ask by Voice** button at the bottom-right.
+3. Tap **Start Listening** and allow microphone access.
+4. Say "What must I do today?" and confirm the transcript appears live.
+5. Tap **Send to Assistant** and confirm the assistant responds with a provider
+   chip (or Local Fallback if no AI key is set).
+6. Tap **Read Response Aloud**, then **Stop Speaking**.
+7. Try the quick-command buttons (e.g. "Read my overdue tasks.").
+8. Use the **Daily Briefing** card near the top and tap **Read Briefing Aloud**.
+9. Unsupported-browser fallback: open in a browser without speech recognition
+   (e.g. Firefox) — the modal shows "Voice input is not supported on this
+   browser. Please type your question instead." and typing still works.
+
 ## Database schema (if using Supabase)
 
 ```sql
