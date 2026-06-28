@@ -201,6 +201,11 @@ body.dark-mode .chart-label, body.dark-mode .legend-item { color: #cbd5e1; fill:
 .ai-mode-general { background: rgba(167,243,208,.18); color: #bbf7d0; }
 .ai-mode-web { background: rgba(253,224,71,.2); color: #fde68a; }
 .ai-mode-local { background: rgba(255,255,255,.16); color: #e2e8f0; }
+.ai-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-chips .ai-mode-chip { margin-top: 10px; }
+.ai-provider-openai { background: rgba(16,185,129,.22); color: #6ee7b7; }
+.ai-provider-gateway { background: rgba(56,189,248,.22); color: #bae6fd; }
+.ai-provider-local { background: rgba(255,255,255,.16); color: #e2e8f0; }
 .ai-notice { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: #fde68a; background: rgba(180, 83, 9, .22); border: 1px solid rgba(253, 224, 71, .35); border-radius: 12px; padding: 9px 11px; }
 .ai-sources { margin-top: 10px; display: grid; gap: 6px; }
 .ai-sources strong { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #cbd5e1; }
