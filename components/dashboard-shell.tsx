@@ -15,6 +15,8 @@ import { KpiAndRisks } from "./kpi-risks"
 import { OpportunitiesSection } from "./opportunities/opportunities-section"
 import { DataTools } from "./data-tools"
 import { LoginGate } from "./login-gate"
+import { DailyBriefingCard } from "./voice/daily-briefing-card"
+import { VoiceAssistantButton } from "./voice/voice-assistant-button"
 import { AuthProvider, useAuth } from "@/lib/auth-context"
 
 function DashboardBody() {
@@ -48,6 +50,7 @@ function DashboardBody() {
         <HeroHeader />
         <main>
           <SetupBanner />
+          <DailyBriefingCard />
           <ChartsSection />
           <SummaryCards />
           <NotificationsPanel />
@@ -59,6 +62,7 @@ function DashboardBody() {
           <KpiAndRisks />
           <DataTools />
         </main>
+        <VoiceAssistantButton />
       </div>
     </DrillDownProvider>
   )
