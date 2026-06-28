@@ -9,13 +9,27 @@ import type { DashboardData } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
 
-// Web search needs the OpenAI Responses API specifically (OPENAI_API_KEY).
+// Provider priority (server-only — keys are NEVER sent to the client):
+// 1. OPENAI_API_KEY  -> call OpenAI directly (no Vercel AI Gateway, no gateway billing).
+// 2. AI_GATEWAY_API_KEY -> only used as a fallback when OPENAI_API_KEY is absent.
 const OPENAI_KEY = process.env.OPENAI_API_KEY
 const GATEWAY_KEY = process.env.AI_GATEWAY_API_KEY
-// Any model access (OpenAI direct or Vercel AI Gateway) enables phrased answers.
+// Any model access (OpenAI direct OR Vercel AI Gateway) enables phrased answers.
 const AI_AVAILABLE = Boolean(OPENAI_KEY || GATEWAY_KEY)
-// Live web search is only available through the OpenAI Responses API.
+// Live web search is only available through the OpenAI Responses API (direct key).
 const WEB_AVAILABLE = Boolean(OPENAI_KEY)
+
+// The active model provider, with OpenAI strictly prioritised over the gateway.
+type Provider = "openai" | "gateway" | "local"
+const ACTIVE_PROVIDER: Exclude<Provider, "local"> | null = OPENAI_KEY
+  ? "openai"
+  : GATEWAY_KEY
+    ? "gateway"
+    : null
+
+// Low-cost OpenAI model for normal dashboard/general questions (and web search,
+// which the Responses API supports on this model).
+const LOW_COST_MODEL = "gpt-4o-mini"
 
 const ORG_CONTEXT =
   "You are the portfolio assistant for Investhood IT — a South African group spanning IT/software, " +
@@ -26,11 +40,12 @@ const ORG_CONTEXT =
 // A reusable OpenAI provider bound to the explicit key (when present).
 const openaiProvider = OPENAI_KEY ? createOpenAI({ apiKey: OPENAI_KEY }) : null
 
-// Resolve the chat model. When an OpenAI key is set we hit OpenAI directly
-// (avoids the AI Gateway billing requirement); otherwise a bare gateway string
-// is used, which routes through the Vercel AI Gateway.
+// Resolve the chat model. When OPENAI_API_KEY is set we hit OpenAI directly
+// (avoiding the AI Gateway billing requirement entirely); only when it is
+// missing do we fall back to a bare gateway string routed through the Vercel
+// AI Gateway.
 function chatModel() {
-  return openaiProvider ? openaiProvider("gpt-5.5") : ("openai/gpt-5.5" as never)
+  return openaiProvider ? openaiProvider(LOW_COST_MODEL) : (`openai/${LOW_COST_MODEL}` as never)
 }
 
 // Build an organisation-knowledge block from the knowledge base, if any entries
@@ -69,7 +84,7 @@ async function answerWithWeb(question: string): Promise<{ answer: string; source
   const openai = openaiProvider ?? createOpenAI({ apiKey: OPENAI_KEY })
   const priority = OFFICIAL_SOURCE_DOMAINS.join(", ")
   const { text, sources } = await generateText({
-    model: openai.responses("gpt-5.5"),
+    model: openai.responses(LOW_COST_MODEL),
     tools: { web_search: openai.tools.webSearch({}) },
     toolChoice: "auto",
     system:
@@ -129,7 +144,11 @@ export async function POST(request: Request) {
 
   // No model access at all → grounded local analysis only.
   if (!AI_AVAILABLE) {
-    return NextResponse.json({ answer: grounded, mode: "local" as AssistantMode })
+    return NextResponse.json({
+      answer: grounded,
+      mode: "local" as AssistantMode,
+      provider: "local" as Provider,
+    })
   }
 
   const route = classifyQuestion(question, safeData, WEB_AVAILABLE)
@@ -137,32 +156,56 @@ export async function POST(request: Request) {
   try {
     if (route === "web") {
       const { answer, sources } = await answerWithWeb(question)
-      return NextResponse.json({ answer: answer || grounded, mode: "web" as AssistantMode, sources })
+      // Web search always runs on the direct OpenAI provider.
+      return NextResponse.json({
+        answer: answer || grounded,
+        mode: "web" as AssistantMode,
+        provider: "openai" as Provider,
+        sources,
+      })
     }
     if (route === "general") {
       const answer = await answerGeneral(question)
-      return NextResponse.json({ answer, mode: "general" as AssistantMode })
+      return NextResponse.json({
+        answer,
+        mode: "general" as AssistantMode,
+        provider: ACTIVE_PROVIDER as Provider,
+      })
     }
     // dashboard
     const answer = await answerDashboard(question, grounded, safeData)
-    return NextResponse.json({ answer, mode: "dashboard" as AssistantMode })
+    return NextResponse.json({
+      answer,
+      mode: "dashboard" as AssistantMode,
+      provider: ACTIVE_PROVIDER as Provider,
+    })
   } catch (err) {
     // Any failure (missing/invalid key, rate limit, network) → graceful fallback
     // to grounded local analysis, but surface WHY so the user can fix setup.
     const message = err instanceof Error ? err.message : String(err)
-    let notice =
-      "AI mode is temporarily unavailable, so this answer uses on-device analysis of your dashboard data."
-    if (/credit card|billing|payment|unlock your free credits/i.test(message)) {
+    const usingOpenAI = ACTIVE_PROVIDER === "openai"
+    let notice = usingOpenAI
+      ? "OpenAI is temporarily unavailable, so this answer uses on-device analysis of your dashboard data."
+      : "AI mode is temporarily unavailable, so this answer uses on-device analysis of your dashboard data."
+    if (/quota|rate limit|429|insufficient_quota|exceeded/i.test(message)) {
+      notice = usingOpenAI
+        ? "Your OpenAI account is out of quota or billing is not active. Add credits/billing at platform.openai.com. Showing on-device analysis for now."
+        : "The AI provider is rate-limited or out of quota right now. Showing on-device analysis instead."
+    } else if (/api key|unauthor|401|invalid_api_key|invalid|missing/i.test(message)) {
+      notice = usingOpenAI
+        ? "Your OPENAI_API_KEY looks missing or invalid. Check it in project settings. Showing on-device analysis for now."
+        : "The AI key looks missing or invalid. Set OPENAI_API_KEY (preferred). Showing on-device analysis for now."
+    } else if (/credit card|billing|payment|unlock your free credits/i.test(message)) {
+      // Only reachable when no OPENAI_API_KEY is set and the gateway is in use.
       notice =
-        "AI answers are unavailable because the Vercel AI Gateway needs a credit card on file to unlock free credits. " +
-        "Add one under Vercel → AI, or set an OPENAI_API_KEY. Showing on-device analysis for now."
-    } else if (/quota|rate limit|429|insufficient/i.test(message)) {
-      notice =
-        "The AI provider is rate-limited or out of quota right now. Showing on-device analysis instead."
-    } else if (/api key|unauthor|401|invalid|missing/i.test(message)) {
-      notice =
-        "The AI key looks missing or invalid. Check AI_GATEWAY_API_KEY (or OPENAI_API_KEY). Showing on-device analysis for now."
+        "AI answers are routed through the Vercel AI Gateway, which needs a credit card on file. " +
+        "Set an OPENAI_API_KEY to call OpenAI directly instead. Showing on-device analysis for now."
     }
-    return NextResponse.json({ answer: grounded, mode: "local" as AssistantMode, notice })
+    return NextResponse.json({
+      answer: grounded,
+      mode: "local" as AssistantMode,
+      provider: "local" as Provider,
+      notice,
+    })
   }
 }

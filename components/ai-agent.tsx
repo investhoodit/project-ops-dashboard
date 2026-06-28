@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useDashboard } from "@/lib/dashboard-context"
 
 type Mode = "dashboard" | "general" | "web" | "local"
+type Provider = "openai" | "gateway" | "local"
 
 interface Source {
   title: string
@@ -17,6 +18,13 @@ const MODE_LABEL: Record<Mode, string> = {
   local: "Local Fallback",
 }
 
+// Exact provider that produced the answer, surfaced to the user.
+const PROVIDER_LABEL: Record<Provider, string> = {
+  openai: "OpenAI Direct",
+  gateway: "Vercel AI Gateway",
+  local: "Local Fallback",
+}
+
 export function AiAgent() {
   const { data, integrations } = useDashboard()
   const [question, setQuestion] = useState("")
@@ -24,6 +32,7 @@ export function AiAgent() {
     "Ask about your dashboard (SBUs, projects, risks, tasks, KPIs, revenue) or a general business, funding, tender, SETA or strategy question.",
   )
   const [mode, setMode] = useState<Mode | null>(null)
+  const [provider, setProvider] = useState<Provider | null>(null)
   const [sources, setSources] = useState<Source[]>([])
   const [notice, setNotice] = useState<string>("")
   const [loading, setLoading] = useState(false)
@@ -37,6 +46,7 @@ export function AiAgent() {
     setLoading(true)
     setAnswer("Thinking...")
     setMode(null)
+    setProvider(null)
     setSources([])
     setNotice("")
     try {
@@ -48,11 +58,13 @@ export function AiAgent() {
       const json = await res.json()
       setAnswer(json.answer || "No answer returned.")
       setMode((json.mode as Mode) || null)
+      setProvider((json.provider as Provider) || null)
       setSources(Array.isArray(json.sources) ? json.sources : [])
       setNotice(typeof json.notice === "string" ? json.notice : "")
     } catch {
       setAnswer("Could not reach the assistant service. Please try again.")
       setMode("local")
+      setProvider("local")
     } finally {
       setLoading(false)
     }
@@ -87,10 +99,22 @@ export function AiAgent() {
           {notice}
         </p>
       )}
-      {mode && !loading && (
-        <span className={`ai-mode-chip ai-mode-${mode}`} aria-label={`Answer source: ${MODE_LABEL[mode]}`}>
-          {MODE_LABEL[mode]}
-        </span>
+      {(provider || mode) && !loading && (
+        <div className="ai-chips">
+          {provider && (
+            <span
+              className={`ai-mode-chip ai-provider-${provider}`}
+              aria-label={`Provider: ${PROVIDER_LABEL[provider]}`}
+            >
+              {PROVIDER_LABEL[provider]}
+            </span>
+          )}
+          {mode && (
+            <span className={`ai-mode-chip ai-mode-${mode}`} aria-label={`Answer source: ${MODE_LABEL[mode]}`}>
+              {MODE_LABEL[mode]}
+            </span>
+          )}
+        </div>
       )}
       {sources.length > 0 && !loading && (
         <div className="ai-sources">
